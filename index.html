@@ -125,12 +125,22 @@
             font-weight: bold;
             color: #2c3e50;
         }
+        .iterations-info {
+            margin-top: 20px;
+            font-size: 16px;
+            color: #2c3e50;
+        }
+
+        /* Адаптация для мобильных устройств */
         @media (max-width: 768px) {
             .container {
-                padding: 15px;
+                padding: 10px;
             }
             h2 {
-                font-size: 24px;
+                font-size: 20px;
+            }
+            h3 {
+                font-size: 18px;
             }
             input[type="number"], select, button {
                 font-size: 14px;
@@ -138,13 +148,25 @@
             .result p {
                 font-size: 14px;
             }
+            table {
+                display: block;
+                overflow-x: auto;
+                white-space: nowrap;
+            }
             th, td {
-                padding: 10px;
+                padding: 8px;
+                font-size: 12px;
             }
             .mini-calculator input {
                 width: 100%;
                 margin-right: 0;
                 margin-bottom: 10px;
+            }
+            .mini-calculator button {
+                font-size: 14px;
+            }
+            .mini-calculator .result p {
+                font-size: 14px;
             }
         }
     </style>
@@ -210,6 +232,12 @@
         <canvas id="growthChart"></canvas>
     </div>
 
+    <!-- Новый раздел: Итерации для достижения целей -->
+    <div class="iterations-info">
+        <h3>Итерации для достижения целей:</h3>
+        <p id="iterationsForGoals"></p>
+    </div>
+
     <!-- Горизонтальная линия для разделения -->
     <div class="divider"></div>
 
@@ -248,6 +276,7 @@
         <button onclick="calculateRisk()">Рассчитать</button>
 
         <div class="result">
+            <p>Депозит: <span id="riskDepositInitial"></span></p>
             <p>Допустимая просадка за день: <span id="riskAmount"></span></p>
             <p>Размер депозита после просадки: <span id="riskDepositAfter"></span></p>
         </div>
@@ -256,6 +285,24 @@
 
 <script>
     let myChart; // Переменная для хранения графика
+
+    // Функция для форматирования числа (убираем нули после точки и добавляем знак доллара)
+    function formatCurrency(value) {
+        const formattedValue = value.toFixed(2).replace(/\.00$/, ''); // Убираем .00, если они есть
+        return `$${formattedValue}`;
+    }
+
+    // Функция для обновления калькулятора риска на день
+    function updateRiskCalculator(deposit) {
+        // Устанавливаем значение депозита в поле "Калькулятор риска на день"
+        document.getElementById('riskDeposit').value = deposit;
+
+        // Выводим депозит в результатах
+        document.getElementById('riskDepositInitial').textContent = formatCurrency(deposit);
+
+        // Автоматически рассчитываем риск
+        calculateRisk();
+    }
 
     function calculate() {
         // Получаем значение депозита
@@ -280,6 +327,9 @@
             return;
         }
 
+        // Обновляем калькулятор риска на день
+        updateRiskCalculator(deposit);
+
         // Очищаем таблицу перед новым расчетом
         const tableBody = document.querySelector("#iterationsTable tbody");
         tableBody.innerHTML = "";
@@ -296,6 +346,10 @@
         const iterations = [];
         const deposits = [];
         const orders = [];
+
+        // Цели для расчета итераций
+        const goals = [100, 500, 1000, 5000, 10000, 50000, 100000, 1000000];
+        const goalIterations = {};
 
         // Рассчитываем и отображаем результаты для 30 итераций
         for (let i = 1; i <= 30; i++) {
@@ -336,6 +390,9 @@
             currentDeposit = newDeposit;
         }
 
+        // Рассчитываем итерации для достижения целей (максимум 100 итераций)
+        calculateGoalIterations(deposit, depositPart, leverage, stepPercentage, goals, goalIterations);
+
         // Отображаем результаты для первой итерации в верхнем блоке
         const firstOrderSize = (deposit * depositPart) * leverage;
         const firstProfitNeeded = deposit * stepPercentage;
@@ -343,13 +400,63 @@
         const firstNewOrderSize = (firstNewDeposit * depositPart) * leverage;
         const firstRequiredProfitPercentage = (firstProfitNeeded / firstOrderSize) * 100;
 
-        document.getElementById('orderSize').textContent = firstOrderSize.toFixed(2) + " $";
-        document.getElementById('profitNeeded').textContent = firstProfitNeeded.toFixed(2) + " $";
-        document.getElementById('newDeposit').textContent = firstNewDeposit.toFixed(2) + " $";
-        document.getElementById('newOrderSize').textContent = firstNewOrderSize.toFixed(2) + " $";
+        document.getElementById('orderSize').textContent = formatCurrency(firstOrderSize);
+        document.getElementById('profitNeeded').textContent = formatCurrency(firstProfitNeeded);
+        document.getElementById('newDeposit').textContent = formatCurrency(firstNewDeposit);
+        document.getElementById('newOrderSize').textContent = formatCurrency(firstNewOrderSize);
+
+        // Отображаем итерации для достижения целей
+        displayGoalIterations(goalIterations, deposit);
 
         // Строим график
         buildChart(iterations, deposits, orders);
+    }
+
+    function calculateGoalIterations(initialDeposit, depositPart, leverage, stepPercentage, goals, goalIterations) {
+        let currentDeposit = initialDeposit;
+        let iteration = 0;
+
+        while (iteration <= 100) { // Ограничиваем 100 итерациями
+            iteration++;
+
+            // Рассчитываем новый размер депозита после увеличения
+            const newDeposit = currentDeposit * (1 + stepPercentage);
+
+            // Проверяем, достигнуты ли цели
+            goals.forEach(goal => {
+                if (currentDeposit < goal && newDeposit >= goal && !goalIterations[goal]) {
+                    goalIterations[goal] = iteration;
+                }
+            });
+
+            // Если все цели достигнуты, выходим из цикла
+            if (Object.keys(goalIterations).length === goals.length) {
+                break;
+            }
+
+            // Обновляем текущий депозит для следующей итерации
+            currentDeposit = newDeposit;
+        }
+    }
+
+    function displayGoalIterations(goalIterations, initialDeposit) {
+        const goals = [100, 500, 1000, 5000, 10000, 50000, 100000, 1000000];
+        let resultText = "";
+
+        goals.forEach(goal => {
+            if (initialDeposit < goal) {
+                if (goalIterations[goal]) {
+                    resultText += `$${goal.toLocaleString()} - ${goalIterations[goal]}, `;
+                } else {
+                    resultText += `$${goal.toLocaleString()} - больше 100, `;
+                }
+            }
+        });
+
+        // Убираем последнюю запятую и пробел
+        resultText = resultText.slice(0, -2);
+
+        document.getElementById('iterationsForGoals').textContent = resultText;
     }
 
     function buildChart(labels, deposits, orders) {
@@ -438,9 +545,9 @@
         const riskAmount = riskDeposit * riskPercentage;
         const riskDepositAfter = riskDeposit - riskAmount;
 
-        // Отображаем результаты
-        document.getElementById('riskAmount').textContent = riskAmount.toFixed(2) + " $";
-        document.getElementById('riskDepositAfter').textContent = riskDepositAfter.toFixed(2) + " $";
+        // Отображаем результаты с новым форматом
+        document.getElementById('riskAmount').textContent = formatCurrency(riskAmount);
+        document.getElementById('riskDepositAfter').textContent = formatCurrency(riskDepositAfter);
     }
 </script>
 
