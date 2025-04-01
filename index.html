@@ -131,6 +131,12 @@
             font-size: 16px;
             color: #2c3e50;
         }
+        .plan-title {
+            font-weight: bold;
+            font-size: 18px;
+            margin-bottom: 12px;
+            color: #2c3e50;
+        }
 
         /* Адаптация для мобильных устройств */
         @media (max-width: 768px) {
@@ -277,9 +283,12 @@
         <button onclick="calculateRisk()">Рассчитать</button>
 
         <div class="result">
+            <div class="plan-title">План на день</div>
             <p>Депозит: <span id="riskDepositInitial"></span></p>
             <p>Допустимая просадка за день: <span id="riskAmount"></span></p>
             <p>Размер депозита после просадки: <span id="riskDepositAfter"></span></p>
+            <p>Рабочий ордер: <span id="riskOrderSize"></span></p>
+            <p>Цель по депозиту на день: <span id="riskDailyGoal"></span></p>
         </div>
     </div>
 </div>
@@ -405,6 +414,10 @@
         document.getElementById('profitNeeded').textContent = formatCurrency(firstProfitNeeded);
         document.getElementById('newDeposit').textContent = formatCurrency(firstNewDeposit);
         document.getElementById('newOrderSize').textContent = formatCurrency(firstNewOrderSize);
+
+        // Обновляем данные в калькуляторе риска
+        document.getElementById('riskOrderSize').textContent = formatCurrency(firstOrderSize);
+        document.getElementById('riskDailyGoal').textContent = formatCurrency(firstNewDeposit);
 
         // Отображаем итерации для достижения целей
         displayGoalIterations(goalIterations, deposit);
